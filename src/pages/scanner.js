@@ -2,13 +2,19 @@
 import { FileScanner } from '../utils/fileScanner.js';
 import { Api } from '../utils/api.js';
 import { Session } from '../utils/session.js';
+import { escapeHtml } from '../utils/html.js';
 
 const scanner = new FileScanner();
-let scanHistory = [];
 
-export function renderScanner() {
+export async function renderScanner() {
   const user = Session.getUser();
-  const history = scanHistory;
+  let history = [];
+  try {
+    const response = await Api.getScans();
+    history = response.scans.map(fromDatabaseScan);
+  } catch {
+    // The scanner remains usable if an older scan history cannot be loaded.
+  }
 
   return `
     <div class="dashboard-page">
@@ -132,8 +138,8 @@ function renderScanResult(result) {
         <div class="result-file-info">
           <span class="result-verdict-icon">${result.verdictIcon || '❓'}</span>
           <div>
-            <h4 class="result-filename">${result.fileName}</h4>
-            <span class="result-size">${result.fileSizeFormatted}</span>
+            <h4 class="result-filename">${escapeHtml(result.fileName)}</h4>
+            <span class="result-size">${escapeHtml(result.fileSizeFormatted)}</span>
           </div>
         </div>
         <div class="result-verdict" style="color: ${result.verdictColor}">
@@ -144,19 +150,19 @@ function renderScanResult(result) {
       <div class="result-details">
         <div class="result-row">
           <span class="result-label">Extension</span>
-          <span class="result-value">.${result.declaredExtension || 'none'}</span>
+          <span class="result-value">.${escapeHtml(result.declaredExtension || 'none')}</span>
         </div>
         <div class="result-row">
           <span class="result-label">Declared MIME</span>
-          <span class="result-value">${result.declaredMime}</span>
+          <span class="result-value">${escapeHtml(result.declaredMime)}</span>
         </div>
         <div class="result-row">
           <span class="result-label">Detected Type</span>
-          <span class="result-value">${result.detectedType || 'Unknown'}</span>
+          <span class="result-value">${escapeHtml(result.detectedType || 'Unknown')}</span>
         </div>
         <div class="result-row">
           <span class="result-label">Magic Bytes</span>
-          <code class="result-hex">${result.magicBytes || 'N/A'}</code>
+          <code class="result-hex">${escapeHtml(result.magicBytes || 'N/A')}</code>
         </div>
       </div>
 
@@ -164,7 +170,7 @@ function renderScanResult(result) {
         <div class="result-messages">
           ${result.details.map(d => `
             <div class="result-message ${d.type}">
-              ${d.message}
+              ${escapeHtml(d.message)}
             </div>
           `).join('')}
         </div>
@@ -189,8 +195,8 @@ export function initScanner(router) {
 
   // Clear history
   btnClearHistory?.addEventListener('click', () => {
-    scanHistory = [];
-    if (scanResults) {
+    Api.clearScans().then(() => {
+      if (!scanResults) return;
       scanResults.innerHTML = `
         <div class="empty-results">
           <span class="empty-icon">🔍</span>
@@ -198,7 +204,7 @@ export function initScanner(router) {
           <p class="empty-hint">Upload a file to analyze its contents</p>
         </div>
       `;
-    }
+    }).catch(error => alert(error.message));
   });
 
   // Click to upload
@@ -268,9 +274,13 @@ export function initScanner(router) {
     if (scanStatus) scanStatus.textContent = `Verdict: ${result.verdict}`;
     await new Promise(r => setTimeout(r, 500));
 
-    // Keep results only for this browser session; uploaded files never leave the device.
-    scanHistory.unshift(result);
-    if (scanHistory.length > 50) scanHistory.pop();
+    // Persist only scan metadata, never the uploaded file or its contents.
+    let storedResult = result;
+    try {
+      storedResult = fromDatabaseScan(await Api.saveScan(result));
+    } catch (error) {
+      alert(`Scan completed but could not be saved: ${error.message}`);
+    }
 
     // Show result
     if (scanResults) {
@@ -279,7 +289,7 @@ export function initScanner(router) {
       if (empty) empty.remove();
 
       // Add result card at top
-      const resultHTML = renderScanResult(result);
+      const resultHTML = renderScanResult(storedResult);
       scanResults.insertAdjacentHTML('afterbegin', resultHTML);
 
       // Animate in
@@ -294,6 +304,22 @@ export function initScanner(router) {
     if (uploadZone) uploadZone.style.display = 'flex';
     if (scanProgressFill) scanProgressFill.style.width = '0%';
   }
+}
+
+function fromDatabaseScan(row) {
+  return {
+    fileName: row.file_name ?? row.fileName,
+    fileSize: row.file_size ?? row.fileSize,
+    fileSizeFormatted: row.file_size_formatted ?? row.fileSizeFormatted,
+    declaredExtension: row.declared_extension ?? row.declaredExtension,
+    declaredMime: row.declared_mime ?? row.declaredMime,
+    detectedType: row.detected_type ?? row.detectedType,
+    magicBytes: row.magic_bytes ?? row.magicBytes,
+    verdict: row.verdict,
+    verdictColor: row.verdict_color ?? row.verdictColor,
+    verdictIcon: row.verdict_icon ?? row.verdictIcon,
+    details: row.details || [],
+  };
 }
 
 function getFileEmoji(filename) {

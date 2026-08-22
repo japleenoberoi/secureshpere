@@ -1,15 +1,14 @@
-# OrbitJobs API contract
+# OrbitJobs data contract
 
-The browser application contains no job, user, or interest data. Configure the API base URL with the `orbitjobs-api-base` meta tag in `index.html` (defaults to `/api`). The API must be served over HTTPS and use secure, `HttpOnly`, `SameSite=Lax` session cookies.
+The browser connects to Supabase using the project URL and publishable/anon key in `index.html`. Supabase Auth manages authentication; application data is protected by the Row Level Security policies in `supabase/migrations/20260823000000_orbitjobs_schema.sql`.
 
-| Endpoint | Response / request |
+| Feature | Supabase resource |
 | --- | --- |
-| `GET /auth/session` | `{ "user": { "id", "name", "email" } }` or `401` |
-| `POST /auth/login` | request `{ "email", "password" }`; returns session user |
-| `POST /auth/register` | request `{ "name", "email", "password" }`; returns session user |
-| `POST /auth/logout` | `204` or JSON success response |
-| `GET /interests` | `{ "categories": [{ "id", "label", "icon", "color" }], "selectedIds": ["id"] }` |
-| `PUT /interests` | request `{ "interestIds": ["id"] }` |
-| `GET /jobs` | `{ "jobs": [{ "id", "title", "company", "location", "salary", "type", "posted", "description", "requirements", "applicationUrl", "trustScore": { "score", "breakdown" } }] }` |
+| Sign-up, sign-in, sign-out, session | `auth.users` through Supabase Auth |
+| User name | `profiles` (created automatically on sign-up) |
+| Available categories | `interest_categories` |
+| Saved categories | `user_interests`, set atomically by `set_user_interests` |
+| Matching jobs | `jobs`, filtered by the signed-in user's `interest_ids` |
+| File-scan history | `scan_results` (metadata only; files never leave the browser) |
 
-Validate all input and authorization server-side. The job endpoint must source and score listings in the backend; never expose third-party credentials or scoring rules in the client. Return only text/URL values that have been sanitized and validated.
+The client cannot write jobs or interest categories. Populate those records from a trusted server, Edge Function, or the Supabase dashboard. Never place a service-role key or scraper credentials in the frontend.
