@@ -1,0 +1,32 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="description" content="OrbitJobs — Navigate the job galaxy safely. Scam-protected job portal with trust scoring, autonomous web scraping, and malicious file detection.">
+  <meta name="theme-color" content="#080B14">
+  <!-- Replace with your HTTPS API origin in deployment; defaults to same-origin /api. -->
+  <meta name="orbitjobs-api-base" content="/api">
+
+  <title>OrbitJobs — Scam-Free Job Portal</title>
+
+  <!-- Favicon (inline SVG data URI) -->
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>◉</text></svg>">
+
+  <!-- Styles -->
+  <link rel="stylesheet" href="./src/styles/variables.css">
+  <link rel="stylesheet" href="./src/styles/global.css">
+  <link rel="stylesheet" href="./src/styles/components.css">
+  <link rel="stylesheet" href="./src/styles/pages.css">
+</head>
+<body>
+  <!-- Animated Star Field Background -->
+  <canvas id="star-canvas" aria-hidden="true"></canvas>
+
+  <!-- Application Root -->
+  <div id="app"></div>
+
+  <!-- App Entry -->
+  <script type="module" src="./src/main.js"></script>
+</body>
+</html>
