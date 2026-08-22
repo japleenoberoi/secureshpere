@@ -53,8 +53,9 @@ export const Api = {
     const { data, error } = await db().auth.signUp({ email, password, options: { data: { name } } });
     fail(error);
     if (!data.user) throw new ApiError('Account creation could not be completed.');
-    if (!data.session) throw new ApiError('Check your email to confirm your account, then sign in.');
-    return { user: publicUser(data.user, { name }) };
+    // Supabase returns a user but no session when Confirm email is enabled.
+    // That is a successful registration, not an application error.
+    return { user: publicUser(data.user, { name }), requiresEmailConfirmation: !data.session };
   },
   async logout() { fail((await db().auth.signOut()).error); },
   async getInterests() {

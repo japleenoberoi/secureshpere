@@ -155,6 +155,12 @@ export function initAuth(router) {
   async function authenticate(request) {
     try {
       const result = await request;
+      if (result.requiresEmailConfirmation) {
+        showError(authError, 'Account created. Check your email, confirm your account, then sign in.');
+        toggleLogin.click();
+        document.getElementById('login-email').value = result.user.email;
+        return;
+      }
       Session.setUser(result.user);
       await Session.hydrate();
       router.navigate(Session.getInterestIds().length > 0 ? '/dashboard' : '/interests');
